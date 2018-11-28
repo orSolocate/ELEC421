@@ -1,23 +1,20 @@
-%3
 %3.a
 figure(31);
 dct=dctmtx(8);
-subplot(1,2,1);
 imshow(dct);
 title("dct matrix");
-%3.b
+%%
+%3.c
 img=imread('cameraman.tif');
 img_mod=double(img)-128;
 fun= @(block_struct) dct*block_struct.data*dct';
 comp=blockproc(img_mod,[8 8],fun);
-subplot(1,2,2);
 imagesc(comp);
 colormap('gray');
 axis image;
-title('rec');
-
+title('dct-transformed image');
 %%
-%4.a
+%4
 q_levels=[10];
 %q_levels=[10 100 200 300 1000];
 Q=[1 1 1 2 2 2 4 4; 1 1 2 2 2 4 4 4;1 2 2 2 4 4 4 8; 2 2 2 4 4 4 8 8;2 2 4 4 4 8 8 8;2 4 4 4 8 8 8 16;4 4 4 8 8 8 16 16;4 4 8 8 8 16 16 16];
@@ -35,11 +32,10 @@ for q_level=q_levels
     subplot(1,5,2);
     plot(h_b);
     title(sprintf('hist of B with q_level %d',q_level));
-%4.b.
     fun3= @(block_struct) block_struct.data.*(q_level*Q);
-    G=blockproc(B,[8 8],fun3);
+    G1=blockproc(B,[8 8],fun3);
     inverse_dct= @(block_struct) dct'*block_struct.data*dct;
-    G=blockproc(G,[8 8],inverse_dct);
+    G=blockproc(G1,[8 8],inverse_dct);
     img_rec=uint8(G+128);
     subplot(1,5,3);
     imshow(img);
@@ -56,12 +52,16 @@ end
 %%
 %5
 ent=entropy(img_rec);
+binarySig = de2bi(img_rec);
+Img_rec_Len = numel(binarySig)
 symbols = unique(img_rec(:));
-counts = imhist(img_rec(:), symbols);
+counts = imhist(img_rec(:), 256);
 p = double(counts) ./ sum(counts);
-[dict,avglen] = huffmandict(symbols,p) 
-comp = huffmanenco(sig,dict)
-
+[dict,avglen] = huffmandict(symbols,p);
+comp = huffmanenco(img_rec(:),dict);
+bits_huffman=(comp);
+binaryComp = de2bi(comp);
+HuffmanLen = numel(binaryComp)
 %%
 %6.a
 alpha=1;
@@ -76,10 +76,10 @@ e=img_rec-f_prime;
 figure(6);
 subplot(1,2,1);
 imshow(img_rec);
-title('reconstructed image');
+title('Before predictive coding');
 subplot(1,2,2);
 imshow(e);
-title('Predictive coding');
+title('After predictive coding');
 %%
 %6.b.
 rec_hist=imhist(img_rec);
@@ -91,8 +91,8 @@ title("plot of img_rec hist");
 subplot (1,2,2);
 plot(e_hist);
 title("e_hist plot");
-e_ent=entropy(e_hist);
-rec_ent=entropy(rec_hist);
+e_ent=entropy(e);
+rec_ent=entropy(img_rec);
 
 %6.c
 [R,C]=size(e);
